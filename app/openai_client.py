@@ -7,6 +7,7 @@ from pathlib import Path
 
 from openai import OpenAI
 
+from app.audio import split_audio_for_transcription
 from app.config import get_settings
 from app.models import AnalysisResult
 from app.prompts import get_system_prompt, render_user_prompt
@@ -21,9 +22,23 @@ class OpenAIService:
         self._analysis_model = settings.openai_analysis_model
         self._reasoning_effort = settings.openai_reasoning_effort
         self._chunk_size = settings.transcript_chunk_size
+        self._transcription_max_size_bytes = settings.openai_transcription_max_file_size_bytes
 
     def transcribe_audio(self, audio_path: Path) -> str:
         """Транскрибирует аудиофайл через Whisper."""
+        parts = split_audio_for_transcription(
+            source=audio_path,
+            output_dir=audio_path.parent / f"{audio_path.stem}-parts",
+            max_size_bytes=self._transcription_max_size_bytes,
+        )
+        transcripts = [self._transcribe_single_file(part) for part in parts]
+        joined = "\n".join(part for part in transcripts if part).strip()
+        if not joined:
+            raise ValueError("Whisper вернул пустую транскрипцию.")
+        return joined
+
+    def _transcribe_single_file(self, audio_path: Path) -> str:
+        """Транскрибирует один аудиофайл через Whisper."""
         with audio_path.open("rb") as file_handle:
             response = self._client.audio.transcriptions.create(
                 model="whisper-1",

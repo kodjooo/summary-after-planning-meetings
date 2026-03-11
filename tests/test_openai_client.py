@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from pathlib import Path
 
 from app.openai_client import OpenAIService
 
@@ -59,3 +60,27 @@ def test_analyze_transcript_uses_chunking_for_long_text(monkeypatch):
 
     assert result.summary == "Итог"
     assert len(calls) == 4
+
+
+def test_transcribe_audio_splits_big_file(monkeypatch, tmp_path):
+    monkeypatch.setattr("app.openai_client.OpenAI", DummyOpenAI)
+    service = OpenAIService()
+    audio_path = tmp_path / "meeting.wav"
+    audio_path.write_bytes(b"audio")
+
+    monkeypatch.setattr(
+        "app.openai_client.split_audio_for_transcription",
+        lambda source, output_dir, max_size_bytes: [
+            output_dir / "part-001.wav",
+            output_dir / "part-002.wav",
+        ],
+    )
+    monkeypatch.setattr(
+        service,
+        "_transcribe_single_file",
+        lambda path: f"text:{Path(path).name}",
+    )
+
+    transcript = service.transcribe_audio(audio_path)
+
+    assert transcript == "text:part-001.wav\ntext:part-002.wav"

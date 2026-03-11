@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     temp_dir: Path = Field(default=Path("/tmp/meeting-assistant"), alias="TEMP_DIR")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     max_file_size_mb: int = Field(default=20, alias="MAX_FILE_SIZE_MB")
+    openai_transcription_max_file_size_mb: int = Field(
+        default=24,
+        alias="OPENAI_TRANSCRIPTION_MAX_FILE_SIZE_MB",
+    )
     voice_group_window_seconds: int = Field(
         default=20,
         alias="VOICE_GROUP_WINDOW_SECONDS",
@@ -46,6 +50,11 @@ class Settings(BaseSettings):
     def max_file_size_bytes(self) -> int:
         """Ограничение на размер файла в байтах."""
         return self.max_file_size_mb * 1024 * 1024
+
+    @property
+    def openai_transcription_max_file_size_bytes(self) -> int:
+        """Безопасный лимит размера файла для Whisper в байтах."""
+        return self.openai_transcription_max_file_size_mb * 1024 * 1024
 
 
 @lru_cache(maxsize=1)
