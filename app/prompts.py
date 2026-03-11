@@ -1,31 +1,23 @@
-"""Промпты для анализа встреч."""
+"""Загрузка промптов из файлов."""
 
-SYSTEM_PROMPT = """Ты AI ассистент для анализа рабочих встреч.
+from __future__ import annotations
 
-На входе дана транскрипция встречи.
+from pathlib import Path
 
-Сформируй:
-1. краткое резюме встречи
-2. основные темы
-3. список задач
-4. исполнителей задач
-5. сроки
+PROMPTS_DIR = Path(__file__).with_name("prompts")
 
-Если исполнитель не указан — напиши "исполнитель не назначен".
-Если срок не указан — "срок не определен".
-Не придумывай информацию, которой нет в тексте.
 
-Верни результат строго в формате:
-РЕЗЮМЕ:
-...
+def _read_prompt(filename: str) -> str:
+    """Читает текст промпта из файла."""
+    return (PROMPTS_DIR / filename).read_text(encoding="utf-8").strip()
 
-ОСНОВНЫЕ ТЕМЫ:
-- ...
 
-ЗАДАЧИ:
-- задача | исполнитель: ... | срок: ...
+def get_system_prompt() -> str:
+    """Возвращает системный промпт."""
+    return _read_prompt("system_prompt.txt")
 
-ЗАДАЧИ ПО ИСПОЛНИТЕЛЯМ:
-Имя:
-- задача
-"""
+
+def render_user_prompt(transcript: str) -> str:
+    """Подставляет транскрипцию в пользовательский промпт."""
+    template = _read_prompt("user_prompt.txt")
+    return template.format(transcript=transcript)

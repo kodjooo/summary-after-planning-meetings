@@ -9,7 +9,7 @@ from openai import OpenAI
 
 from app.config import get_settings
 from app.models import AnalysisResult
-from app.prompts import SYSTEM_PROMPT
+from app.prompts import get_system_prompt, render_user_prompt
 
 
 class OpenAIService:
@@ -19,6 +19,7 @@ class OpenAIService:
         settings = get_settings()
         self._client = OpenAI(api_key=settings.openai_api_key)
         self._analysis_model = settings.openai_analysis_model
+        self._reasoning_effort = settings.openai_reasoning_effort
         self._chunk_size = settings.transcript_chunk_size
 
     def transcribe_audio(self, audio_path: Path) -> str:
@@ -70,14 +71,15 @@ class OpenAIService:
         return self._run_response(prompt)
 
     def _analyze_text(self, transcript: str) -> str:
-        prompt = f"Проанализируй транскрипцию встречи:\n\n{transcript}\n\nи сформируй структурированный результат."
+        prompt = render_user_prompt(transcript)
         return self._run_response(prompt)
 
     def _run_response(self, user_prompt: str) -> str:
         response = self._client.responses.create(
             model=self._analysis_model,
-            instructions=SYSTEM_PROMPT,
+            instructions=get_system_prompt(),
             input=user_prompt,
+            reasoning={"effort": self._reasoning_effort},
         )
         text = getattr(response, "output_text", "").strip()
         if not text:

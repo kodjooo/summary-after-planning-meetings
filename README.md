@@ -25,6 +25,7 @@ docker compose up --build
 - `TELEGRAM_BOT_TOKEN` — токен бота от `@BotFather`.
 - `OPENAI_API_KEY` — API-ключ OpenAI.
 - `OPENAI_ANALYSIS_MODEL` — модель анализа через Responses API.
+- `OPENAI_REASONING_EFFORT` — уровень рассуждения модели: `low`, `medium`, `high`.
 - `REDIS_URL` — адрес Redis внутри Docker Compose.
 
 ## Что умеет MVP

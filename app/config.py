@@ -18,6 +18,10 @@ class Settings(BaseSettings):
         default="gpt-4.1-mini",
         alias="OPENAI_ANALYSIS_MODEL",
     )
+    openai_reasoning_effort: str = Field(
+        default="medium",
+        alias="OPENAI_REASONING_EFFORT",
+    )
     redis_url: str = Field(alias="REDIS_URL")
     temp_dir: Path = Field(default=Path("/tmp/meeting-assistant"), alias="TEMP_DIR")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

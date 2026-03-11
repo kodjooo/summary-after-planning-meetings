@@ -2,8 +2,6 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "6379:6379"
 
   bot:
     build:
@@ -21,7 +19,7 @@ services:
     build:
       context: .
     restart: unless-stopped
-    command: celery -A app.celery_app worker --loglevel=INFO
+    command: celery -A app.celery_app worker --loglevel=INFO -Q meetings
     env_file:
       - .env
     depends_on:
