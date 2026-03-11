@@ -40,7 +40,13 @@ docker compose up --build
 ## Деплой на удалённый сервер
 
 1. Установить Docker Engine и Docker Compose Plugin.
-2. Склонировать репозиторий на сервер.
+2. Склонировать репозиторий на сервер:
+
+```bash
+git clone https://github.com/kodjooo/summary-after-planning-meetings.git
+cd summary-after-planning-meetings
+```
+
 3. Создать `.env` по образцу `.env.example` и заполнить секреты.
 4. Выполнить `docker compose up --build -d`.
 5. Проверять логи командами `docker compose logs -f bot` и `docker compose logs -f worker`.
