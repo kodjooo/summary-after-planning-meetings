@@ -1,0 +1,10 @@
+.env
+.venv/
+.cursor/
+.DS_Store
+.pytest_cache/
+__pycache__/
+*.py[cod]
+htmlcov/
+coverage.xml
+tmp/

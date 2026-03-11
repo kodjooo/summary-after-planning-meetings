@@ -1,0 +1,30 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  bot:
+    build:
+      context: .
+    restart: unless-stopped
+    command: python -m app.main bot
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    volumes:
+      - ./tmp:/tmp/meeting-assistant
+
+  worker:
+    build:
+      context: .
+    restart: unless-stopped
+    command: celery -A app.celery_app worker --loglevel=INFO
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    volumes:
+      - ./tmp:/tmp/meeting-assistant
