@@ -52,7 +52,66 @@ git clone https://github.com/kodjooo/summary-after-planning-meetings.git
 cd summary-after-planning-meetings
 ```
 
-3. Создать `.env` по образцу `.env.example` и заполнить секреты.
-4. Выполнить `docker compose up --build -d`.
-5. Проверять логи командами `docker compose logs -f bot` и `docker compose logs -f worker`.
-6. Для fallback-загрузки больших файлов в `WEB_BASE_URL` должен смотреть публично доступный адрес сервера.
+3. Создать `.env` по образцу `.env.example` и заполнить обязательные значения:
+
+```env
+TELEGRAM_BOT_TOKEN=...
+OPENAI_API_KEY=...
+OPENAI_ANALYSIS_MODEL=gpt-5-mini-2025-08-07
+OPENAI_REASONING_EFFORT=low
+REDIS_URL=redis://redis:6379/0
+WEB_BASE_URL=https://your-public-upload-url
+UPLOAD_TOKEN_TTL_SECONDS=3600
+TEMP_DIR=/tmp/meeting-assistant
+LOG_LEVEL=INFO
+MAX_FILE_SIZE_MB=100
+OPENAI_TRANSCRIPTION_MAX_FILE_SIZE_MB=24
+TRANSCRIPT_CHUNK_SIZE=40000
+BOT_STATUS_POLLING_TIMEOUT=30
+```
+
+4. Запустить стек:
+
+```bash
+docker compose up --build -d
+```
+
+5. Проверить, что сервисы поднялись:
+
+```bash
+docker compose ps
+docker compose logs -f bot worker web
+```
+
+6. Если нет root-доступа и нельзя открыть публичный порт для `web`, поднять временный туннель через `cloudflared`:
+
+```bash
+cd ~
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+chmod +x cloudflared
+nohup ./cloudflared tunnel --url http://localhost:8080 > cloudflared.log 2>&1 &
+tail -n 30 ~/cloudflared.log
+```
+
+7. Взять из лога URL вида `https://...trycloudflare.com`, прописать его в `.env` как `WEB_BASE_URL`, затем перезапустить контейнеры:
+
+```bash
+docker compose down
+docker compose up --build -d
+```
+
+8. Для обновления проекта на сервере использовать:
+
+```bash
+git pull
+docker compose down
+docker compose up --build -d
+```
+
+9. Для диагностики:
+
+```bash
+docker compose logs -f bot
+docker compose logs -f worker
+docker compose logs -f web
+```
