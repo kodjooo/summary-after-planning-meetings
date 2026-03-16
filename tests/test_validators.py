@@ -42,7 +42,7 @@ def test_validate_rejects_big_file():
         telegram_file_id="1",
         file_name="meeting.wav",
         mime_type="audio/wav",
-        size=25 * 1024 * 1024,
+        size=101 * 1024 * 1024,
     )
 
     is_valid, error = validate_incoming_file(file_data)

@@ -26,6 +26,7 @@ docker compose up --build
 - `OPENAI_API_KEY` — API-ключ OpenAI.
 - `OPENAI_ANALYSIS_MODEL` — модель анализа через Responses API.
 - `OPENAI_REASONING_EFFORT` — уровень рассуждения модели: `low`, `medium`, `high`.
+- `MAX_FILE_SIZE_MB` — максимальный размер входного файла, который бот примет в обработку.
 - `OPENAI_TRANSCRIPTION_MAX_FILE_SIZE_MB` — безопасный размер части аудио перед отправкой в Whisper.
 - `REDIS_URL` — адрес Redis внутри Docker Compose.
 

@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     redis_url: str = Field(alias="REDIS_URL")
     temp_dir: Path = Field(default=Path("/tmp/meeting-assistant"), alias="TEMP_DIR")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
-    max_file_size_mb: int = Field(default=20, alias="MAX_FILE_SIZE_MB")
+    max_file_size_mb: int = Field(default=100, alias="MAX_FILE_SIZE_MB")
     openai_transcription_max_file_size_mb: int = Field(
         default=24,
         alias="OPENAI_TRANSCRIPTION_MAX_FILE_SIZE_MB",
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
         default=20,
         alias="VOICE_GROUP_WINDOW_SECONDS",
     )
-    transcript_chunk_size: int = Field(default=12000, alias="TRANSCRIPT_CHUNK_SIZE")
+    transcript_chunk_size: int = Field(default=40000, alias="TRANSCRIPT_CHUNK_SIZE")
     bot_status_polling_timeout: int = Field(
         default=30,
         alias="BOT_STATUS_POLLING_TIMEOUT",
