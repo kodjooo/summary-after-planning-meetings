@@ -15,6 +15,8 @@ def set_test_env(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_ANALYSIS_MODEL", "gpt-4.1-mini")
     monkeypatch.setenv("OPENAI_REASONING_EFFORT", "medium")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("WEB_BASE_URL", "http://localhost:8080")
+    monkeypatch.setenv("UPLOAD_TOKEN_TTL_SECONDS", "3600")
     monkeypatch.setenv("TEMP_DIR", str(tmp_path))
     monkeypatch.setenv("MAX_FILE_SIZE_MB", "100")
     monkeypatch.setenv("OPENAI_TRANSCRIPTION_MAX_FILE_SIZE_MB", "24")

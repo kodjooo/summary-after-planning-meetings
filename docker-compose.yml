@@ -26,3 +26,17 @@ services:
       - redis
     volumes:
       - ./tmp:/tmp/meeting-assistant
+
+  web:
+    build:
+      context: .
+    restart: unless-stopped
+    command: python -m app.main web
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./tmp:/tmp/meeting-assistant

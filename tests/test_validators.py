@@ -49,3 +49,4 @@ def test_validate_rejects_big_file():
 
     assert is_valid is False
     assert "Файл слишком большой" in error
+    assert "Размер файла: 101.0 MB." in error

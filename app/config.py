@@ -23,6 +23,8 @@ class Settings(BaseSettings):
         alias="OPENAI_REASONING_EFFORT",
     )
     redis_url: str = Field(alias="REDIS_URL")
+    web_base_url: str = Field(default="http://localhost:8080", alias="WEB_BASE_URL")
+    upload_token_ttl_seconds: int = Field(default=3600, alias="UPLOAD_TOKEN_TTL_SECONDS")
     temp_dir: Path = Field(default=Path("/tmp/meeting-assistant"), alias="TEMP_DIR")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     max_file_size_mb: int = Field(default=100, alias="MAX_FILE_SIZE_MB")

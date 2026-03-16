@@ -9,15 +9,18 @@ from pathlib import Path
 from uuid import uuid4
 
 from celery import Task
+from aiogram.exceptions import TelegramBadRequest
 
 from app.audio import convert_to_wav, ensure_non_empty_file, merge_audio_files
 from app.celery_app import celery_app
 from app.config import get_settings
+from app.fallback_upload import build_upload_url, create_upload_token
 from app.formatter import render_markdown_result
 from app.logging_setup import setup_logging
 from app.models import JobStatus
 from app.openai_client import OpenAIService
-from app.telegram_client import build_bot, download_file, send_text_file
+from app.telegram_client import build_bot, download_file, is_too_big_telegram_error, send_text_file
+from app.validators import format_file_size_mb
 from app.voice_buffer import flush_voice_messages
 
 logger = logging.getLogger(__name__)
@@ -54,6 +57,36 @@ def _cleanup_directory(path: Path) -> None:
     shutil.rmtree(path, ignore_errors=True)
 
 
+async def _send_large_file_fallback(chat_id: int, payload: dict[str, object]) -> None:
+    source_files: list[dict[str, object]] = payload["files"]  # type: ignore[assignment]
+    first_file = source_files[0]
+    token = create_upload_token(
+        chat_id=chat_id,
+        user_id=int(payload["user_id"]),
+        file_name=str(first_file.get("file_name", "audio")),
+        file_size=int(first_file.get("size", 0) or 0),
+    )
+    upload_url = build_upload_url(token)
+    size_bytes = int(first_file.get("size", 0) or 0)
+    size_mb = format_file_size_mb(size_bytes)
+    lines = [
+        "Telegram не позволяет боту скачать такой большой файл.",
+        f"Загрузите запись по резервной ссылке: {upload_url}",
+    ]
+    if size_mb is not None:
+        lines.insert(1, f"Размер файла: {size_mb}.")
+    await _send_status(chat_id, "\n".join(lines))
+
+
+def _move_uploaded_file_to_workdir(file_payload: dict[str, object], destination: Path) -> Path:
+    source = Path(str(file_payload["local_file_path"]))
+    if not source.exists():
+        raise FileNotFoundError(f"Не найден загруженный файл: {source}")
+    shutil.move(str(source), str(destination))
+    _cleanup_directory(source.parent)
+    return destination
+
+
 @celery_app.task(bind=True, base=BaseTask, name="app.tasks.process_meeting_task")
 def process_meeting_task(self: BaseTask, payload: dict[str, object]) -> None:
     """Обрабатывает встречу end-to-end."""
@@ -74,6 +107,14 @@ def process_meeting_task(self: BaseTask, payload: dict[str, object]) -> None:
             run(bot.session.close())
         run(_send_status(chat_id, _status_text(JobStatus.DONE) or ""))
         logger.info("Обработка завершена", extra={"chat_id": chat_id, "status": JobStatus.DONE})
+    except TelegramBadRequest as exc:
+        if is_too_big_telegram_error(exc):
+            logger.warning("Telegram не дал скачать большой файл", extra={"chat_id": chat_id})
+            run(_send_large_file_fallback(chat_id, payload))
+            return
+        logger.exception("Ошибка Telegram при обработке встречи: %s", exc)
+        run(_send_status(chat_id, "Не удалось обработать файл. Попробуйте снова."))
+        raise
     except Exception as exc:
         logger.exception("Ошибка обработки встречи: %s", exc)
         run(_send_status(chat_id, "Не удалось обработать файл. Попробуйте снова."))
@@ -90,7 +131,10 @@ async def _process_payload(bot, payload: dict[str, object], work_dir: Path) -> N
     for index, file_payload in enumerate(source_files, start=1):
         raw_name = str(file_payload["file_name"])
         destination = work_dir / f"{index}-{raw_name}"
-        await download_file(bot, str(file_payload["telegram_file_id"]), destination)
+        if file_payload.get("local_file_path"):
+            _move_uploaded_file_to_workdir(file_payload, destination)
+        else:
+            await download_file(bot, str(file_payload["telegram_file_id"]), destination)
         ensure_non_empty_file(destination)
         extension = destination.suffix.lower()
         if extension in {".ogg", ".m4a"}:

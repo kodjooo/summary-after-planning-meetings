@@ -11,3 +11,4 @@ def test_docker_compose_contains_required_services():
     assert "bot:" in content
     assert "worker:" in content
     assert "redis:" in content
+    assert "web:" in content

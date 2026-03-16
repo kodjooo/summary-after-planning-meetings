@@ -7,6 +7,7 @@ from pathlib import Path
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import BufferedInputFile
 
 from app.config import get_settings
@@ -26,6 +27,11 @@ async def download_file(bot: Bot, telegram_file_id: str, destination: Path) -> P
     telegram_file = await bot.get_file(telegram_file_id)
     await bot.download(telegram_file, destination=destination)
     return destination
+
+
+def is_too_big_telegram_error(error: Exception) -> bool:
+    """Определяет ошибку слишком большого файла со стороны Telegram."""
+    return isinstance(error, TelegramBadRequest) and "file is too big" in str(error).lower()
 
 
 async def send_text_file(bot: Bot, chat_id: int, filename: str, content: str) -> None:
