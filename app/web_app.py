@@ -52,17 +52,80 @@ def _render_upload_page(token: str, original_file_name: str, file_size: int) -> 
       input, button {{
         font: inherit;
       }}
-      input[type="file"] {{
-        display: block;
-        margin: 16px 0 24px;
+      .file-picker {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 180px;
+        margin: 20px 0 24px;
+        padding: 24px;
+        border: 2px dashed #9db7dd;
+        border-radius: 18px;
+        background: #f7fbff;
+        color: #24436f;
+        text-align: center;
+        cursor: pointer;
+      }}
+      .file-picker:hover {{
+        background: #eef6ff;
+      }}
+      .file-picker input[type="file"] {{
+        display: none;
       }}
       button {{
         border: 0;
         border-radius: 999px;
-        padding: 14px 22px;
+        min-width: 260px;
+        min-height: 56px;
+        padding: 14px 28px;
         background: #1f6feb;
         color: #fff;
         cursor: pointer;
+        transition: opacity 0.2s ease;
+      }}
+      button:disabled {{
+        opacity: 0.7;
+        cursor: progress;
+      }}
+      .file-name {{
+        margin-top: 12px;
+        color: #5c667a;
+      }}
+      .status {{
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: #f3f6fb;
+        color: #3e4d66;
+        display: none;
+      }}
+      .status.visible {{
+        display: block;
+      }}
+      .status.success {{
+        background: #e7f7ee;
+        color: #19643d;
+      }}
+      .status.error {{
+        background: #fdecec;
+        color: #9f2d2d;
+      }}
+      .progress {{
+        margin-top: 16px;
+        height: 12px;
+        border-radius: 999px;
+        background: #dfe7f3;
+        overflow: hidden;
+        display: none;
+      }}
+      .progress.visible {{
+        display: block;
+      }}
+      .progress-bar {{
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #1f6feb, #4aa1ff);
+        transition: width 0.2s ease;
       }}
     </style>
   </head>
@@ -72,10 +135,91 @@ def _render_upload_page(token: str, original_file_name: str, file_size: int) -> 
       <p class="muted">Telegram не дал боту скачать исходный файл. Загрузите запись здесь, и результат вернется в тот же Telegram-чат.</p>
       <p><strong>Исходный файл:</strong> {original_file_name}</p>
       <p><strong>Размер по данным Telegram:</strong> {round(file_size / (1024 * 1024), 2) if file_size else "неизвестен"} MB</p>
-      <form action="/upload/{token}" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".ogg,.mp3,.m4a,.wav" required>
-        <button type="submit">Загрузить и обработать</button>
+      <form id="upload-form" action="/upload/{token}" method="post" enctype="multipart/form-data">
+        <label class="file-picker" for="file-input">
+          <div>
+            <strong>Нажмите, чтобы выбрать файл</strong><br>
+            <span class="muted">Поддерживаются ogg, mp3, m4a, wav</span>
+            <div id="file-name" class="file-name">Файл не выбран</div>
+          </div>
+          <input id="file-input" type="file" name="file" accept=".ogg,.mp3,.m4a,.wav" required>
+        </label>
+        <button id="submit-button" type="submit">Загрузить и обработать</button>
+        <div id="status-box" class="status"></div>
+        <div id="progress" class="progress">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
       </form>
+      <script>
+        const form = document.getElementById("upload-form");
+        const fileInput = document.getElementById("file-input");
+        const fileName = document.getElementById("file-name");
+        const submitButton = document.getElementById("submit-button");
+        const statusBox = document.getElementById("status-box");
+        const progress = document.getElementById("progress");
+        const progressBar = document.getElementById("progress-bar");
+
+        const setStatus = (message, kind = "") => {{
+          statusBox.textContent = message;
+          statusBox.className = `status visible ${{
+            kind ? kind : ""
+          }}`.trim();
+        }};
+
+        fileInput.addEventListener("change", () => {{
+          const selected = fileInput.files && fileInput.files[0];
+          fileName.textContent = selected ? `Выбран файл: ${{selected.name}}` : "Файл не выбран";
+          if (selected) {{
+            setStatus("Файл выбран. Можно загружать.");
+          }}
+        }});
+
+        form.addEventListener("submit", async (event) => {{
+          event.preventDefault();
+          if (!fileInput.files || !fileInput.files[0]) {{
+            setStatus("Сначала выберите файл для загрузки.", "error");
+            return;
+          }}
+
+          submitButton.disabled = true;
+          submitButton.textContent = "Загружаю...";
+          progress.classList.add("visible");
+          progressBar.style.width = "0%";
+          setStatus("Идет загрузка файла. Не закрывайте страницу.");
+
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", form.action);
+          xhr.upload.addEventListener("progress", (progressEvent) => {{
+            if (!progressEvent.lengthComputable) {{
+              return;
+            }}
+            const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+            progressBar.style.width = `${{percent}}%`;
+            setStatus(`Идет загрузка файла: ${{percent}}%.`);
+          }});
+
+          xhr.addEventListener("load", () => {{
+            submitButton.disabled = false;
+            submitButton.textContent = "Загрузить и обработать";
+            progressBar.style.width = "100%";
+            if (xhr.status >= 200 && xhr.status < 300) {{
+              setStatus("Файл успешно загружен. Результат придет в Telegram.", "success");
+              fileInput.disabled = true;
+              return;
+            }}
+            setStatus("Загрузка не удалась. Попробуйте еще раз.", "error");
+          }});
+
+          xhr.addEventListener("error", () => {{
+            submitButton.disabled = false;
+            submitButton.textContent = "Загрузить и обработать";
+            setStatus("Не удалось отправить файл. Проверьте соединение и попробуйте снова.", "error");
+          }});
+
+          const formData = new FormData(form);
+          xhr.send(formData);
+        }});
+      </script>
     </div>
   </body>
 </html>"""
