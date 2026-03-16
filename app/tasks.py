@@ -15,7 +15,7 @@ from app.audio import convert_to_wav, ensure_non_empty_file, merge_audio_files
 from app.celery_app import celery_app
 from app.config import get_settings
 from app.fallback_upload import build_upload_url, create_upload_token
-from app.formatter import render_markdown_result
+from app.formatter import render_markdown_result, render_short_markdown_result
 from app.logging_setup import setup_logging
 from app.models import JobStatus
 from app.openai_client import OpenAIService
@@ -187,14 +187,7 @@ async def _process_payload(bot, payload: dict[str, object], work_dir: Path) -> N
 
 async def _send_result(bot, chat_id: int, result) -> None:
     logger.info("Отправка результата", extra={"status": JobStatus.SENDING, "chat_id": chat_id})
-    rendered = render_markdown_result(result)
-    if len(rendered) <= 3500:
-        await bot.send_message(chat_id=chat_id, text=rendered)
-        return
-
-    await bot.send_message(
-        chat_id=chat_id,
-        text="Результат получился длинным, отправляю краткую сводку и полный текст отдельным файлом.",
-    )
-    await bot.send_message(chat_id=chat_id, text=f"*РЕЗЮМЕ ВСТРЕЧИ*\n{result.summary}")
-    await send_text_file(bot, chat_id, "meeting-summary.txt", result.raw_text)
+    short_rendered = render_short_markdown_result(result)
+    full_rendered = render_markdown_result(result)
+    await bot.send_message(chat_id=chat_id, text=short_rendered)
+    await send_text_file(bot, chat_id, "meeting-summary.txt", full_rendered)

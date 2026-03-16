@@ -33,3 +33,30 @@ def render_markdown_result(result: AnalysisResult) -> str:
         lines.append("- Нет задач")
 
     return "\n".join(lines).strip()
+
+
+def render_short_markdown_result(result: AnalysisResult) -> str:
+    """Собирает краткую версию ответа для сообщения в Telegram."""
+    lines = ["*РЕЗЮМЕ ВСТРЕЧИ*", result.summary or "Нет данных", "", "*ОСНОВНЫЕ ТЕМЫ*"]
+
+    if result.topics:
+        lines.extend([f"- {topic}" for topic in result.topics[:5]])
+    else:
+        lines.append("- Нет данных")
+
+    lines.extend(["", "*КЛЮЧЕВЫЕ ЗАДАЧИ*"])
+    if result.tasks:
+        for task in result.tasks[:5]:
+            lines.append(f"- {task['task']}")
+            lines.append(f"  исполнитель: {task['owner']}")
+            lines.append(f"  срок: {task['deadline']}")
+    else:
+        lines.append("- Нет задач")
+
+    lines.extend(
+        [
+            "",
+            "_Полный результат приложен отдельным txt-файлом._",
+        ]
+    )
+    return "\n".join(lines).strip()
