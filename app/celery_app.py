@@ -22,7 +22,6 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_routes={
         "app.tasks.process_meeting_task": {"queue": "meetings"},
-        "app.tasks.flush_voice_group_task": {"queue": "meetings"},
     },
 )
 

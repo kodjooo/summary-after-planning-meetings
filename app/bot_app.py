@@ -15,7 +15,6 @@ from app.logging_setup import setup_logging
 from app.models import IncomingFile, SourceType
 from app.telegram_client import build_bot
 from app.validators import validate_incoming_file
-from app.voice_buffer import push_voice_message
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -40,7 +39,7 @@ async def help_handler(message: Message) -> None:
 
 @router.message(F.voice)
 async def voice_handler(message: Message) -> None:
-    """Принимает голосовые сообщения и буферизует их."""
+    """Принимает голосовые сообщения и сразу запускает обработку."""
     voice = message.voice
     if not voice or not message.from_user:
         return
@@ -60,18 +59,19 @@ async def voice_handler(message: Message) -> None:
     payload = {
         "chat_id": message.chat.id,
         "user_id": message.from_user.id,
-        "telegram_file_id": voice.file_id,
-        "file_name": file_data.file_name,
-        "mime_type": file_data.mime_type,
-        "size": file_data.size,
+        "source_type": SourceType.VOICE.value,
+        "files": [
+            {
+                "telegram_file_id": voice.file_id,
+                "file_name": file_data.file_name,
+                "mime_type": file_data.mime_type,
+                "size": file_data.size,
+            }
+        ],
+        "created_at": time.time(),
     }
-    push_voice_message(payload)
-    celery_app.send_task(
-        "app.tasks.flush_voice_group_task",
-        args=[message.chat.id, message.from_user.id],
-        countdown=get_settings().voice_group_window_seconds,
-    )
-    await message.answer("Голосовое сообщение получено. Жду возможные продолжения перед запуском обработки.")
+    celery_app.send_task("app.tasks.process_meeting_task", args=[payload])
+    await message.answer("Голосовое сообщение получено. Начинаю обработку.")
 
 
 @router.message(F.audio | F.document)

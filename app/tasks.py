@@ -21,7 +21,6 @@ from app.models import JobStatus
 from app.openai_client import OpenAIService
 from app.telegram_client import build_bot, download_file, is_too_big_telegram_error, send_text_file
 from app.validators import format_file_size_mb
-from app.voice_buffer import flush_voice_messages
 
 logger = logging.getLogger(__name__)
 
@@ -199,41 +198,3 @@ async def _send_result(bot, chat_id: int, result) -> None:
     )
     await bot.send_message(chat_id=chat_id, text=f"*РЕЗЮМЕ ВСТРЕЧИ*\n{result.summary}")
     await send_text_file(bot, chat_id, "meeting-summary.txt", result.raw_text)
-
-
-@celery_app.task(bind=True, base=BaseTask, name="app.tasks.flush_voice_group_task")
-def flush_voice_group_task(self: BaseTask, chat_id: int, user_id: int) -> None:
-    """Забирает накопленные voice-сообщения и создает общее задание."""
-    setup_logging(get_settings().log_level)
-    items, updated_at = flush_voice_messages(chat_id, user_id)
-    if not items:
-        logger.info("Буфер voice пуст", extra={"chat_id": chat_id, "user_id": user_id})
-        return
-
-    elapsed = time.time() - updated_at
-    window = get_settings().voice_group_window_seconds
-    if elapsed < window:
-        countdown = max(1, int(window - elapsed))
-        self.apply_async(args=[chat_id, user_id], countdown=countdown)
-        for item in items:
-            from app.voice_buffer import push_voice_message
-
-            push_voice_message(item)
-        return
-
-    payload = {
-        "chat_id": chat_id,
-        "user_id": user_id,
-        "source_type": "voice",
-        "files": [
-            {
-                "telegram_file_id": item["telegram_file_id"],
-                "file_name": item["file_name"],
-                "mime_type": item.get("mime_type"),
-                "size": item.get("size"),
-            }
-            for item in items
-        ],
-        "created_at": time.time(),
-    }
-    process_meeting_task.delay(payload)

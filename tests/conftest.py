@@ -20,7 +20,6 @@ def set_test_env(tmp_path, monkeypatch):
     monkeypatch.setenv("TEMP_DIR", str(tmp_path))
     monkeypatch.setenv("MAX_FILE_SIZE_MB", "100")
     monkeypatch.setenv("OPENAI_TRANSCRIPTION_MAX_FILE_SIZE_MB", "24")
-    monkeypatch.setenv("VOICE_GROUP_WINDOW_SECONDS", "20")
     monkeypatch.setenv("TRANSCRIPT_CHUNK_SIZE", "100")
     monkeypatch.setenv("BOT_STATUS_POLLING_TIMEOUT", "1")
     from app.config import get_settings

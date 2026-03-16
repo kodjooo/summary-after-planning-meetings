@@ -32,10 +32,6 @@ class Settings(BaseSettings):
         default=24,
         alias="OPENAI_TRANSCRIPTION_MAX_FILE_SIZE_MB",
     )
-    voice_group_window_seconds: int = Field(
-        default=20,
-        alias="VOICE_GROUP_WINDOW_SECONDS",
-    )
     transcript_chunk_size: int = Field(default=40000, alias="TRANSCRIPT_CHUNK_SIZE")
     bot_status_polling_timeout: int = Field(
         default=30,
