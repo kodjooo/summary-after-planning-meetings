@@ -136,7 +136,7 @@ async def _process_payload(bot, payload: dict[str, object], work_dir: Path) -> N
             await download_file(bot, str(file_payload["telegram_file_id"]), destination)
         ensure_non_empty_file(destination)
         extension = destination.suffix.lower()
-        if extension in {".ogg", ".m4a"}:
+        if extension in {".ogg", ".m4a", ".aac"}:
             converted = work_dir / f"{destination.stem}.wav"
             audio_paths.append(convert_to_wav(destination, converted))
         else:

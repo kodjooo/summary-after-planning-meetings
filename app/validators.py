@@ -7,7 +7,7 @@ from pathlib import Path
 from app.config import get_settings
 from app.models import IncomingFile
 
-SUPPORTED_EXTENSIONS = {".ogg", ".mp3", ".m4a", ".wav"}
+SUPPORTED_EXTENSIONS = {".ogg", ".mp3", ".m4a", ".wav", ".aac"}
 
 
 def format_file_size_mb(size_bytes: int | None) -> str | None:
@@ -22,7 +22,7 @@ def validate_incoming_file(file_data: IncomingFile) -> tuple[bool, str | None]:
     settings = get_settings()
     extension = Path(file_data.file_name).suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
-        return False, "Неподдерживаемый формат файла. Поддерживаются: ogg, mp3, m4a, wav."
+        return False, "Неподдерживаемый формат файла. Поддерживаются: ogg, mp3, m4a, wav, aac."
 
     if file_data.size and file_data.size > settings.max_file_size_bytes:
         actual_size = format_file_size_mb(file_data.size)

@@ -32,7 +32,7 @@ async def start_handler(message: Message) -> None:
 async def help_handler(message: Message) -> None:
     """Справка по использованию."""
     await message.answer(
-        "Поддерживаются voice, audio и document в форматах ogg, mp3, m4a, wav. "
+        "Поддерживаются voice, audio и document в форматах ogg, mp3, m4a, wav, aac. "
         "Если Telegram не даст боту скачать слишком большой файл, бот пришлет резервную ссылку на web-загрузку."
     )
 

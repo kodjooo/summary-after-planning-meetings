@@ -21,6 +21,21 @@ def test_validate_accepts_supported_audio_file():
     assert error is None
 
 
+def test_validate_accepts_aac_file():
+    file_data = IncomingFile(
+        source_type=SourceType.AUDIO,
+        telegram_file_id="1",
+        file_name="meeting.aac",
+        mime_type="audio/aac",
+        size=1024,
+    )
+
+    is_valid, error = validate_incoming_file(file_data)
+
+    assert is_valid is True
+    assert error is None
+
+
 def test_validate_rejects_unsupported_extension():
     file_data = IncomingFile(
         source_type=SourceType.DOCUMENT,

@@ -139,10 +139,10 @@ def _render_upload_page(token: str, original_file_name: str, file_size: int) -> 
         <label class="file-picker" for="file-input">
           <div>
             <strong>Нажмите, чтобы выбрать файл</strong><br>
-            <span class="muted">Поддерживаются ogg, mp3, m4a, wav</span>
+            <span class="muted">Поддерживаются ogg, mp3, m4a, wav, aac</span>
             <div id="file-name" class="file-name">Файл не выбран</div>
           </div>
-          <input id="file-input" type="file" name="file" accept=".ogg,.mp3,.m4a,.wav" required>
+          <input id="file-input" type="file" name="file" accept=".ogg,.mp3,.m4a,.wav,.aac" required>
         </label>
         <button id="submit-button" type="submit">Загрузить и обработать</button>
         <div id="status-box" class="status"></div>
@@ -294,7 +294,7 @@ async def upload_file(token: str, file: UploadFile = File(...)) -> HTMLResponse:
         return HTMLResponse(
             _render_result_page(
                 "Неподдерживаемый формат",
-                "Поддерживаются только ogg, mp3, m4a, wav.",
+                "Поддерживаются только ogg, mp3, m4a, wav, aac.",
             ),
             status_code=400,
         )

@@ -29,3 +29,4 @@ def test_upload_form_returns_html_for_valid_token(monkeypatch):
     assert response.status_code == 200
     assert "Загрузка большой записи" in response.text
     assert "meeting.wav" in response.text
+    assert ".aac" in response.text

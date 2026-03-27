@@ -93,6 +93,7 @@ Android Recorder
 m4a
 mp3
 wav
+aac
 
 Пользователь отправляет файл Telegram-боту.
 
@@ -100,7 +101,7 @@ Pipeline:
 
 диктофон
 ↓
-файл m4a/mp3/wav
+файл m4a/mp3/wav/aac
 ↓
 Telegram бот
 ↓
@@ -122,6 +123,7 @@ mp3
 m4a
 wav
 ogg
+aac
 
 Файл отправляется боту как document или audio.
 
@@ -157,6 +159,7 @@ Telegram бот получает message.voice
 скачивание файла
 ↓
 конвертация ogg → wav
+конвертация aac → wav
 ↓
 Whisper API
 ↓
@@ -264,6 +267,7 @@ Voice messages:
 
 ogg → wav
 m4a → wav
+aac → wav
 
 Пример:
 
