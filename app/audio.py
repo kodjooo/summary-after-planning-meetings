@@ -92,6 +92,16 @@ def split_audio_for_transcription(
     max_size_bytes: int,
 ) -> list[Path]:
     """Нарезает большой аудиофайл на части меньше лимита Whisper."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return _split_audio_for_transcription(source, output_dir, max_size_bytes)
+
+
+def _split_audio_for_transcription(
+    source: Path,
+    output_dir: Path,
+    max_size_bytes: int,
+) -> list[Path]:
+    """Рекурсивно нарезает аудио до безопасного размера частей."""
     ensure_non_empty_file(source)
     source_size = source.stat().st_size
     if source_size <= max_size_bytes:
@@ -107,12 +117,19 @@ def split_audio_for_transcription(
         "-y",
         "-i",
         str(source),
+        "-vn",
         "-f",
         "segment",
         "-segment_time",
         str(segment_duration),
-        "-c",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
         "pcm_s16le",
+        "-reset_timestamps",
+        "1",
         str(pattern),
     ]
     result = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -123,8 +140,18 @@ def split_audio_for_transcription(
     if not parts:
         raise AudioProcessingError("После нарезки не найдено ни одной части аудио.")
 
-    for part in parts:
+    normalized_parts: list[Path] = []
+    for index, part in enumerate(parts, start=1):
         ensure_non_empty_file(part)
         if part.stat().st_size > max_size_bytes:
-            raise AudioProcessingError("После нарезки часть аудио всё ещё превышает лимит Whisper.")
-    return parts
+            nested_output_dir = output_dir / f"{part.stem}-nested-{index:03d}"
+            normalized_parts.extend(
+                _split_audio_for_transcription(
+                    source=part,
+                    output_dir=nested_output_dir,
+                    max_size_bytes=max_size_bytes,
+                )
+            )
+            continue
+        normalized_parts.append(part)
+    return normalized_parts
