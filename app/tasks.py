@@ -15,11 +15,11 @@ from app.audio import convert_to_wav, ensure_non_empty_file, merge_audio_files
 from app.celery_app import celery_app
 from app.config import get_settings
 from app.fallback_upload import build_upload_url, create_upload_token
-from app.formatter import render_markdown_result, render_short_markdown_result
+from app.formatter import build_excel_report, render_short_markdown_result
 from app.logging_setup import setup_logging
 from app.models import JobStatus
 from app.openai_client import OpenAIService
-from app.telegram_client import build_bot, download_file, is_too_big_telegram_error, send_text_file
+from app.telegram_client import build_bot, download_file, is_too_big_telegram_error, send_binary_file
 from app.validators import format_file_size_mb
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,6 @@ def _move_uploaded_file_to_workdir(file_payload: dict[str, object], destination:
     if not source.exists():
         raise FileNotFoundError(f"Не найден загруженный файл: {source}")
     shutil.move(str(source), str(destination))
-    _cleanup_directory(source.parent)
     return destination
 
 
@@ -123,6 +122,7 @@ def process_meeting_task(self: BaseTask, payload: dict[str, object]) -> None:
 
 
 async def _process_payload(bot, payload: dict[str, object], work_dir: Path) -> None:
+    work_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Скачивание файлов", extra={"status": JobStatus.DOWNLOADING})
     source_files: list[dict[str, object]] = payload["files"]  # type: ignore[assignment]
     audio_paths: list[Path] = []
@@ -131,7 +131,7 @@ async def _process_payload(bot, payload: dict[str, object], work_dir: Path) -> N
         raw_name = str(file_payload["file_name"])
         destination = work_dir / f"{index}-{raw_name}"
         if file_payload.get("local_file_path"):
-            _move_uploaded_file_to_workdir(file_payload, destination)
+            destination = _move_uploaded_file_to_workdir(file_payload, destination)
         else:
             await download_file(bot, str(file_payload["telegram_file_id"]), destination)
         ensure_non_empty_file(destination)
@@ -188,6 +188,12 @@ async def _process_payload(bot, payload: dict[str, object], work_dir: Path) -> N
 async def _send_result(bot, chat_id: int, result) -> None:
     logger.info("Отправка результата", extra={"status": JobStatus.SENDING, "chat_id": chat_id})
     short_rendered = render_short_markdown_result(result)
-    full_rendered = render_markdown_result(result)
+    excel_report = build_excel_report(result)
     await bot.send_message(chat_id=chat_id, text=short_rendered)
-    await send_text_file(bot, chat_id, "meeting-summary.txt", full_rendered)
+    await send_binary_file(
+        bot,
+        chat_id,
+        "meeting-tasks.xlsx",
+        excel_report,
+        caption="Таблица задач по итогам встречи.",
+    )

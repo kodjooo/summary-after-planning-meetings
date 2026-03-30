@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from app.audio import split_audio_for_transcription
 from app.config import get_settings
 from app.models import AnalysisResult
 from app.prompts import get_system_prompt, render_user_prompt
+
+DEFAULT_OWNER = "ответственный не указан"
+DEFAULT_DEADLINE = "срок не указан"
 
 
 class OpenAIService:
@@ -102,50 +106,35 @@ class OpenAIService:
         return text
 
     def _parse_analysis(self, raw_text: str) -> AnalysisResult:
-        sections: dict[str, list[str]] = {}
-        current = "OTHER"
-        for line in raw_text.splitlines():
-            stripped = line.strip()
-            if not stripped:
-                continue
-            upper = stripped.upper().rstrip(":")
-            if upper in {"РЕЗЮМЕ", "ОСНОВНЫЕ ТЕМЫ", "ЗАДАЧИ", "ЗАДАЧИ ПО ИСПОЛНИТЕЛЯМ"}:
-                current = upper
-                sections[current] = []
-                continue
-            sections.setdefault(current, []).append(stripped)
+        try:
+            payload = json.loads(raw_text)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Responses API вернул невалидный JSON.") from exc
 
-        tasks = []
-        for line in sections.get("ЗАДАЧИ", []):
-            cleaned = line.removeprefix("- ").strip()
-            parts = [part.strip() for part in cleaned.split("|")]
-            task = {
-                "task": parts[0] if parts else cleaned,
-                "owner": "исполнитель не назначен",
-                "deadline": "срок не определен",
-            }
-            for part in parts[1:]:
-                lowered = part.lower()
-                if lowered.startswith("исполнитель:"):
-                    task["owner"] = part.split(":", 1)[1].strip() or task["owner"]
-                if lowered.startswith("срок:"):
-                    task["deadline"] = part.split(":", 1)[1].strip() or task["deadline"]
-            tasks.append(task)
+        summary = str(payload.get("summary", "")).strip()
+        raw_tasks = payload.get("tasks", [])
+        if not isinstance(raw_tasks, list):
+            raw_tasks = []
 
-        grouped_by_owner: dict[str, list[str]] = {}
-        current_owner = ""
-        for line in sections.get("ЗАДАЧИ ПО ИСПОЛНИТЕЛЯМ", []):
-            if line.endswith(":"):
-                current_owner = line[:-1].strip()
-                grouped_by_owner.setdefault(current_owner, [])
+        tasks: list[dict[str, str]] = []
+        for item in raw_tasks:
+            if not isinstance(item, dict):
                 continue
-            if line.startswith("- ") and current_owner:
-                grouped_by_owner[current_owner].append(line.removeprefix("- ").strip())
+            task_text = str(item.get("task", "")).strip()
+            if not task_text:
+                continue
+            owner = str(item.get("owner", "")).strip() or DEFAULT_OWNER
+            deadline = str(item.get("deadline", "")).strip() or DEFAULT_DEADLINE
+            tasks.append(
+                {
+                    "task": task_text,
+                    "owner": owner,
+                    "deadline": deadline,
+                }
+            )
 
         return AnalysisResult(
-            summary="\n".join(sections.get("РЕЗЮМЕ", [])).strip(),
-            topics=[line.removeprefix("- ").strip() for line in sections.get("ОСНОВНЫЕ ТЕМЫ", [])],
+            summary=summary,
             tasks=tasks,
-            grouped_by_owner=grouped_by_owner,
             raw_text=raw_text,
         )

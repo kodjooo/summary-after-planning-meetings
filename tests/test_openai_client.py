@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
-from app.openai_client import OpenAIService
+import pytest
+
+from app.openai_client import DEFAULT_DEADLINE, DEFAULT_OWNER, OpenAIService
 
 
 class DummyOpenAI:
@@ -21,26 +23,54 @@ def test_parse_analysis_extracts_tasks(monkeypatch):
     service = OpenAIService()
 
     parsed = service._parse_analysis(
-        """РЕЗЮМЕ:
-Короткое резюме
-
-ОСНОВНЫЕ ТЕМЫ:
-- Бюджет
-
-ЗАДАЧИ:
-- Подготовить смету | исполнитель: Иван | срок: пятница
-
-ЗАДАЧИ ПО ИСПОЛНИТЕЛЯМ:
-Иван:
-- Подготовить смету
-"""
+        """
+        {
+          "summary": "Короткое резюме",
+          "tasks": [
+            {
+              "task": "Подготовить смету",
+              "owner": "Иван",
+              "deadline": "пятница"
+            }
+          ]
+        }
+        """
     )
 
     assert parsed.summary == "Короткое резюме"
-    assert parsed.topics == ["Бюджет"]
     assert parsed.tasks[0]["owner"] == "Иван"
     assert parsed.tasks[0]["deadline"] == "пятница"
-    assert parsed.grouped_by_owner["Иван"] == ["Подготовить смету"]
+
+
+def test_parse_analysis_uses_default_values(monkeypatch):
+    monkeypatch.setattr("app.openai_client.OpenAI", DummyOpenAI)
+    service = OpenAIService()
+
+    parsed = service._parse_analysis(
+        """
+        {
+          "summary": "Короткое резюме",
+          "tasks": [
+            {
+              "task": "Подготовить смету",
+              "owner": "",
+              "deadline": ""
+            }
+          ]
+        }
+        """
+    )
+
+    assert parsed.tasks[0]["owner"] == DEFAULT_OWNER
+    assert parsed.tasks[0]["deadline"] == DEFAULT_DEADLINE
+
+
+def test_parse_analysis_raises_for_invalid_json(monkeypatch):
+    monkeypatch.setattr("app.openai_client.OpenAI", DummyOpenAI)
+    service = OpenAIService()
+
+    with pytest.raises(ValueError, match="невалидный JSON"):
+        service._parse_analysis("РЕЗЮМЕ: текст")
 
 
 def test_analyze_transcript_uses_chunking_for_long_text(monkeypatch):
@@ -51,8 +81,8 @@ def test_analyze_transcript_uses_chunking_for_long_text(monkeypatch):
     def fake_run_response(prompt: str) -> str:
         calls.append(prompt)
         if "часть" in prompt:
-            return "summary chunk"
-        return "РЕЗЮМЕ:\nИтог\n\nОСНОВНЫЕ ТЕМЫ:\n- Тема\n\nЗАДАЧИ:\n- Задача | исполнитель: Иван | срок: завтра\n\nЗАДАЧИ ПО ИСПОЛНИТЕЛЯМ:\nИван:\n- Задача"
+            return '{"summary":"summary chunk","tasks":[]}'
+        return '{"summary":"Итог","tasks":[{"task":"Задача","owner":"Иван","deadline":"завтра"}]}'
 
     monkeypatch.setattr(service, "_run_response", fake_run_response)
 

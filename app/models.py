@@ -43,7 +43,5 @@ class AnalysisResult:
     """Структурированный результат анализа."""
 
     summary: str
-    topics: list[str]
     tasks: list[dict[str, str]]
-    grouped_by_owner: dict[str, list[str]]
     raw_text: str

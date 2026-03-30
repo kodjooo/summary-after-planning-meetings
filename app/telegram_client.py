@@ -38,3 +38,15 @@ async def send_text_file(bot: Bot, chat_id: int, filename: str, content: str) ->
     """Отправляет текстовый файл пользователю."""
     payload = BufferedInputFile(content.encode("utf-8"), filename=filename)
     await bot.send_document(chat_id=chat_id, document=payload)
+
+
+async def send_binary_file(
+    bot: Bot,
+    chat_id: int,
+    filename: str,
+    content: bytes,
+    caption: str | None = None,
+) -> None:
+    """Отправляет бинарный файл пользователю."""
+    payload = BufferedInputFile(content, filename=filename)
+    await bot.send_document(chat_id=chat_id, document=payload, caption=caption)
